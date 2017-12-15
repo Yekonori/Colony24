@@ -22,8 +22,10 @@ export default class Boats
 
     movement(positionY = 0, positionX = 0) {
 
-
         function foo(callback, that){
+            if(positionX > 500 || positionY > 500){
+                return that.parent.actionlist.showInAL("Vous ne pouvez pas fuir de la planète, réglez votre dette");
+            }
             $.getJSON( `moveboat?x=${positionX}&y=${positionY}`).done(function (data) {
                 callback(data, that);
             });
@@ -33,31 +35,33 @@ export default class Boats
         foo(function(data, that){
             let x = data.x;
             let y = data.y;
+
             let success = data.success;
 
             if(x >= 0 && y >= 0 && success === 1) {
 
-                // Modification de la position du bateau
-                that.y = positionY;
-                that.x = positionX;
-
                 // Perte d'énérgie sur les déplacements
                 let n;
-                for (n in that.equipement) {
-                    if (that.equipement[n].hasOwnProperty('Energie')) {
-                        if (that.equipement[n]['Energie'] > 10) {
-                            that.equipement[n]['Energie'] -= 10;
-                            $(`#li${that.id} > div > p`).html(`${that.name} x:${x} y:${y}`);
-                            console.log("Votre bateau est maintenant en " + x + " - " + y);
-                        } else if (that.equipement[n]['Energie'] < 10) {
-                            return console.log("Vous n'avez pas assez de batterie");
+                if(that.equipement) {
+                    for ( n in that.equipement ) {
+                        if ( that.equipement[n].hasOwnProperty( 'Energie' ) ) {
+                            if ( that.equipement[n]['Energie'] > 10 ) {
+                                that.equipement[n]['Energie'] -= 10;
+                                that.parent.actionlist.showInAL( "Votre bateau est maintenant en " + x + " - " + y );
+                                that.x = x;
+                                that.y = y;
+                                return that.goldMining( data.gold );
+                            } else if ( that.equipement[n]['Energie'] < 10 ) {
+                                return that.parent.actionlist.showInAL("Vous n'avez pas assez de batterie, rachetez en une !!");
+                            }
                         }
-                    } else { console.log('Moteur non trouvé :/'); }
+                    }
+                    return that.parent.actionlist.showInAL("Vous n'avez pas de batterie équipée");
+                } else{
+                    that.parent.actionlist.showInAL("Vous n'avez pas d'équipement sur votre bateau");
                 }
-                console.log(that.equipement);
-                that.goldMining(data.gold);
-            }else{
-                return console.log("Une île se trouve à cette position");
+            }else if (x >= 0 && y >= 0 && success === 0){
+                return that.parent.actionlist.showInAL("Une île se trouve à cette position");
             }
         }, this);
     }
@@ -141,12 +145,14 @@ export default class Boats
                 if(this.stockage >= this.capacite) {
 
                     this.stockage = this.capacite;
+                    console.log(this.stockage);
                     this.returnHome();
                 }
             }
         }else {
 
-            this.parent.actionlist.showInAL(`Il n'y a pas d'Or en : ${this.y} - ${this.x}`);
+            this.parent.actionlist.showInAL(`Il n'y a pas d'Or en : ${this.x} - ${this.y}`);
+            $(`#li${this.id} > div > p:nth-child(2)`).html(`x:${this.x} y:${this.y}`);
             this.parent.saveDataJson(this.parent);
         }
     }
@@ -154,7 +160,7 @@ export default class Boats
 
         this.y = 0;
         this.x = 0;
-        $(`#li${this.id} > div > p`).html(`${this.name} x:${this.x} y:${this.y}`);
+        $(`#li${this.id} > div > p:nth-child(2)`).html(`x:${this.x} y:${this.y}`);
 
         this.parent.actionlist.showInAL(`Votre ${this.name} est retourné à Main Harbor pour vider son stockage `, 0);
 
@@ -163,7 +169,6 @@ export default class Boats
         this.parent.wallet.renderWallet();
 
         $.get( `update?gold=${this.stockage}`).done(function(data){
-            console.log(this);
         });
 
         this.stockage = 0;

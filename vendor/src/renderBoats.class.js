@@ -32,13 +32,13 @@ export default class RenderBoats{
             window.onclick = function(event) {
                 if (event.target === document.getElementById('background'))
                 {
-                  document.getElementById('popupBoat').style.display = 'none';
-                  document.getElementById('popUp').style.display = 'none';
-                  $('#boatList').remove();
+                    document.getElementById('popupBoat').style.display = 'none';
+                    document.getElementById('popUp').style.display = 'none';
+                    $('#boatList').remove();
                 }
                 if (event.target === document.getElementById('closeEquipment'))
                 {
-                  $('#popupEquipment').remove();
+                    $('#popupEquipment').remove();
                 }
             }
 
@@ -49,8 +49,8 @@ export default class RenderBoats{
                         <div>
                             <p>${boats[boat].name}</p>
                             <p>x:${boats[boat].x} y:${boats[boat].y}</p>
-                            <input type="number" placeholder="x"/>
-                            <input type="number" placeholder="y"/>
+                            <input type="number" placeholder="x" min="0" max="500"/>
+                            <input type="number" placeholder="y" min="0" max="500"/>
                             <div>
                             <input class="hvr-pulse-grow" type="button" id="move" value="Se déplacer"/>
                             <input class="hvr-pulse-grow" type="button" id="boatEquipment" value="Equipement" data-id="${boats[boat].id}"/>
@@ -61,12 +61,11 @@ export default class RenderBoats{
 
                         let context = e.data.that;
 
-                        let inputX = $(`#li${context.id} > div > input:nth-child(2)`).val();
-                        let inputY = $(`#li${context.id} > div > input:nth-child(3)`).val();
+                        let inputX = $(`#li${context.id} > div > input:nth-child(3)`).val();
+                        let inputY = $(`#li${context.id} > div > input:nth-child(4)`).val();
 
                         if (inputX != 0 || inputY != 0){
                             context.movement(inputY, inputX);
-                            $(`#li${context.id} > div > p`).html(`${context.name} x:${context.x} y:${context.y}`);
                         }
                     });
 
@@ -87,7 +86,14 @@ export default class RenderBoats{
                             window.onclick = function (event) {
                                 if (event.target === document.getElementById('background')) {
                                     document.getElementById('popupEquipment').style.display = "none";
-                                    document.getElementById("popUp").style.display = "none";
+                                    document.getElementById('popupBoat').style.display = "none";
+                                    document.getElementById('popUp').style.display = "none";
+                                    parent.renderBoats.rendered = false;
+                                    $('#boatList').remove();
+                                    $('ul#inventory2-model li').remove();
+                                    $('ul#boatEquipment-model li').remove();
+                                } else if (event.target === document.getElementById('popupBoat') || event.target === document.getElementById('boatList')){
+                                    document.getElementById('popupEquipment').style.display = "none";
                                     parent.renderBoats.rendered = false;
                                     $('ul#inventory2-model li').remove();
                                     $('ul#boatEquipment-model li').remove();
@@ -156,32 +162,53 @@ export default class RenderBoats{
                 let liId = $(this).attr('id');
                 let dataId = $(this).data('id');
 
+                let boatEquipment = parent.boats[dataId];
+
                 // Vérification des Values
                 equipement = equipement[liId];
+                if (!parent.boats[dataId].equipement){
+                    parent.boats[dataId].equipement = {};
+                }
+                if(!parent.boats[dataId].equipement[liId]) {
 
-                $eqt.append(`<li id="${liId}" data-id="${dataId}"></li>`);
-                let eqtProperty = "";
-                for (let carac in equipement) {
-                    if(equipement[carac] != "") {
-                        if (carac != 'id' && carac != 'Nom'  && carac != 'Prix') {
-                            eqtProperty += `<br/> ${carac} : ${equipement[carac]}`;
+                    $eqt.append( `<li id="${liId}" data-id="${dataId}"></li>` );
+                    let eqtProperty = "";
+                    for ( let carac in equipement ) {
+                        if (carac == "Type" && boatEquipment.equipement){
+                            boatEquipment = boatEquipment.equipement;
+                            for(let value in boatEquipment){
+                                if (boatEquipment[value].Type == equipement.Type){
+                                    console.log(boatEquipment[value]);
+                                    console.log(equipement);
+                                    return parent.actionlist.showInAL(`Vous avez déjà un équipement de ce type sur votre ${parent.boats[dataId].name}`);
+                                }
+                            }
+                        }
+                        if ( equipement[carac] != "" ) {
+                            if ( carac != 'id' && carac != 'Nom' && carac != 'Prix' ) {
+                                eqtProperty += `<br/> ${carac} : ${equipement[carac]}`;
+                            }
                         }
                     }
-                }
-                $(this).remove();
-                if (parent.boats[dataId].equipement) {
-                    parent.boats[dataId].equipement[liId] = equipement;
-                } else{
-                    parent.boats[dataId].equipement = {};
-                    parent.boats[dataId].equipement[liId] = equipement;
-                }
+                    $( this ).remove();
+                    console.log(this);
+                    if ( parent.boats[dataId].equipement ) {
+                        parent.boats[dataId].equipement[liId] = {};
+                        Object.assign(parent.boats[dataId].equipement[liId], equipement);
+                    } else {
+                        parent.boats[dataId].equipement = {};
+                        parent.boats[dataId].equipement[liId] = {};
+                        Object.assign(parent.boats[dataId].equipement[liId], equipement);
+                    }
 
-                parent.actionlist.showInAL(`Vous avez retiré ${liId} de votre inventaire`);
+                    parent.actionlist.showInAL( `Vous avez retiré ${liId} de votre inventaire` );
 
-                delete parent.inventory[liId];
-                parent.saveDataJson(parent);
-                inventoryRender($eqt, liId, eqtProperty);
-                // console.log(parent.inventory);
+                    delete parent.inventory[liId];
+                    parent.saveDataJson( parent );
+                    inventoryRender( $eqt, liId, eqtProperty );
+                } else {
+                    parent.actionlist.showInAL("Votre bateau contient déjà cet équipement");
+                }
             });
 
             // Click sur un équipement équipé à notre bateau
@@ -212,7 +239,8 @@ export default class RenderBoats{
 
                 parent.actionlist.showInAL(`Vous avez retiré ${liId} de l'inventaire de votre ${parent.boats[dataId].name}`);
 
-                parent.inventory[liId] = equipement;
+                parent.inventory[liId] = {};
+                Object.assign(parent.inventory[liId], equipement);
                 delete equipements[liId];
                 parent.saveDataJson(parent);
                 inventoryRender($eqt, liId, eqtProperty);
@@ -220,13 +248,12 @@ export default class RenderBoats{
 
             function inventoryRender($eqt, value, eqtProperty){
                 $eqt.children().last().append(`
-                    <p">
+                    <p>
                         ${value}
                         ${eqtProperty}
                     </p>
                 `);
             }
-
 
         });
 
